@@ -1,35 +1,129 @@
 (function() {
     "use strict";
+
+    var accountCodes = {
+        "広告宣伝費":"6113",
+        "新聞図書費":"6114",
+        "発送配達費":"6115",
+        "旅費交通費":"6133",
+        "諸会費":"6134",
+        "事務用消耗品費":"6217",
+        "電話等通信費":"6218",
+        "租税公課":"6221",
+        "備品・消耗品費":"6225",
+        "交通費":"6133",
+        "雑費":"5467",
+        "地代家賃":"6215",
+        "水道光熱費":"6219",
+        "機械・装置":"1213",
+        "会議費":"6111",
+        "交際費":"6223",
+        "交際費(5000円以下)":"6112",
+        "支払手数料":"6232",
+        "厚生費":"6226",
+        "外注費":"6212",
+        "ｺﾐｯｼｮﾝ料":"5214",
+        "SaaS代":"6331",
+        "郵便代":"6332",
+        "工具・器具・備品":"1216",
+        "ﾘｰｽ料":"6334",
+        "預り金":"2117",
+        "支払報酬":"6235",
+        "研修費":"6660",
+        "仮払金":"1156",
+        "雑収入":"7118",
+        "保険料":"6224",
+        "立替金":"1155",
+        "ｿﾌﾄｳｪｱ(ﾉｰﾘﾂ)":"1240",
+        "(10万以上) 工具・器具":"1216",
+        "イベント費":"6115",
+    };
+    var genka = {
+        "外注費":"6212",
+        "広告宣伝費":"6113",
+        "ｺﾐｯｼｮﾝ料":"5214",
+        "SaaS代":"6331",
+        "仕入外注費":"6332"
+    };
+    var deposits = {
+        "預り金":"2117",
+        "仮払金":"1156"
+    };
+    var payers = {
+        "倉貫":"1",
+        "藤原":"2",
+        "小口現金":"",
+        "":""
+    }
+    var csvTarget = ['未対応の一覧', '出力用一覧（当月&出力済除外）'];
+
+    var isCsvDownloadEnabled = function(listName) {
+        return -1 < csvTarget.indexOf(listName);
+    }
+
+    var isDeposit = function(record) {
+        return record['expense_type'].value in deposit;
+    }
+
+    var isArray = function(obj) {
+        return Object.prototype.toString.call(obj) === '[object Array]';
+    }
+
+    var escapeStr = function(value) {
+        if(isArray(value)) {
+            value = value.join(',');
+        }
+        return '"' + (value? value.replace(/"/g, '""'): '') + '"';
+    }
+
+    var updateCsvFlg = function(recordNo) {
+        var url = 'https://asterisk.cybozu.com/k/v1/record.json';
+        var body = {
+            "app": 16,
+            "id": recordNo,
+            "record": {
+                "output_csv_flg": {
+                    "value": ["済"]
+                }
+            },
+            "__REQUEST_TOKEN__": kintone.getRequestToken()
+        };
+        var xhr = new XMLHttpRequest();
+        xhr.open('PUT', url);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                // success
+                console.log(JSON.parse(xhr.responseText));
+            } else {
+                // error
+                console.log(JSON.parse(xhr.responseText));
+            }
+        };
+        xhr.send(JSON.stringify(body));
+    }
+
     kintone.events.on('app.record.index.show', function(event) {
 
-        if(!/未対応/.test(event.viewName) && !/出力用/.test(event.viewName)) {
+        if(!isCsvDownloadEnabled(event.viewName)) {
             return;
         }
-
+    
         if (document.getElementById('dl_csv_button') !== null) {
             return;
         }
-
+        
         var dlCsvButton = document.createElement('button');
         dlCsvButton.id = 'dl_csv_button';
         dlCsvButton.innerHTML = 'CSVダウンロード';
 
-        var isArray = function(obj) {
-            return Object.prototype.toString.call(obj) === '[object Array]';
-        }
-
-        // エスケープ
-        var escapeStr = function(value) {
-            if(isArray(value)) {
-                value = value.join(',');
-            }
-            return '"' + (value? value.replace(/"/g, '""'): '') + '"';
-        };
-
         dlCsvButton.onclick = function() {
 
             var records = event.records;
-            window.confirm('CSVをダウンロードします');
+            if(!window.confirm('CSVをダウンロードします')) {
+                return;
+            }
         
             if ((window.URL || window.webkitURL).createObjectURL == null) {
                 // サポートされていないブラウザ
@@ -54,6 +148,7 @@
                 row.push(escapeStr(record['作成日時'].value));
 
                 csv.push(row);
+                updateCsvFlg(record['レコード番号'].value);
             }
 
             // 文字列を配列に
@@ -91,4 +186,5 @@
 
         kintone.app.getHeaderMenuSpaceElement().appendChild(dlCsvButton);
     });
+
 })();
