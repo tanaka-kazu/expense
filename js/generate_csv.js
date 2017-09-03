@@ -77,7 +77,6 @@
     }
 
     var updateCsvFlg = function(recordNo) {
-        var url = 'https://asterisk.cybozu.com/k/v1/record.json';
         var body = {
             "app": 16,
             "id": recordNo,
@@ -85,23 +84,15 @@
                 "output_csv_flg": {
                     "value": ["済"]
                 }
-            },
-            "__REQUEST_TOKEN__": kintone.getRequestToken()
-        };
-        var xhr = new XMLHttpRequest();
-        xhr.open('PUT', url);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                // success
-                console.log(JSON.parse(xhr.responseText));
-            } else {
-                // error
-                console.log(JSON.parse(xhr.responseText));
             }
         };
-        xhr.send(JSON.stringify(body));
+		kintone.api(kintone.api.url('/k/v1/record', true), 'PUT', body, function(resp) {
+    		// success
+    		console.log(resp);
+		}, function(error) {
+    		// error
+    		console.log(error);
+		});
     }
 
     kintone.events.on('app.record.index.show', function(event) {
