@@ -38,7 +38,7 @@
         "(10万以上) 工具・器具":"1216",
         "イベント費":"6115",
     };
-    var genka = {
+    var costs = {
         "外注費":"6212",
         "広告宣伝費":"6113",
         "ｺﾐｯｼｮﾝ料":"5214",
@@ -57,23 +57,47 @@
     }
     var csvTarget = ['未対応の一覧', '出力用一覧（当月&出力済除外）'];
 
+    var csvHeader = ['処理区分', 'データID', '伝票日付', '伝票番号', '入力日付', '借方・科目', '補助コード'
+         ,'部門コード', '取引先コード', '取引先名', '税種別', '事業区分', '税率', '内外別記', '金額', '税額'
+         ,'摘要', '貸方・科目', '補助コード', '部門コード', '取引先コード', '取引先名', '税種別', '事業区分'
+         , '税率', '内外別記', '金額', '税額', '摘要'];
+    
+    var escapeStr = function(value) {
+        if(isArray(value)) {
+            value = value.join(',');
+        }
+        return '"' + (value? value.replace(/"/g, '""'): '') + '"';
+    }
+
+    var getPayerCode = function(payer) {
+        return escapeStr(payers[payer]);
+    }
+
     var isCsvDownloadEnabled = function(listName) {
         return -1 < csvTarget.indexOf(listName);
     }
 
     var isDeposit = function(record) {
-        return record['expense_type'].value in deposit;
+        if(getPayerCode(record)) {
+            return false;
+        }
+        return record['expense_type'].value in deposits;
+    }
+
+    var isCost = function(record) {
+        return record['expense_type'].value in costs;
+    }
+
+    var isIncludeTax = function(record) {
+        return record['tax_type'] == '仕課内（8%）';
     }
 
     var isArray = function(obj) {
         return Object.prototype.toString.call(obj) === '[object Array]';
     }
 
-    var escapeStr = function(value) {
-        if(isArray(value)) {
-            value = value.join(',');
-        }
-        return '"' + (value? value.replace(/"/g, '""'): '') + '"';
+    var getAccountCode = function(expenseType) {
+        return escapeStr(accountCodes[expenseType]);
     }
 
     var updateCsvFlg = function(recordNo) {
@@ -93,6 +117,94 @@
     		// error
     		console.log(error);
 		});
+    }
+
+    var createRowCsv = function(record) {
+        var row = [];
+        // 1 処理区分
+        row.push(escapeStr("1"));
+        // 2 データID
+        row.push(escapeStr(""));
+        // 3 伝票日付
+        row.push(escapeStr(record['expense_date'].value));
+        // 4 伝票番号
+        row.push(escapeStr(""));
+        // 5 入力日付
+        row.push(escapeStr(""));
+        //--------------------------借方
+        // 6 借方・科目
+        row.push(getAccountCode(record['expense_type'].value));
+        // 7 補助コード
+        if(record['expense_type'].value == "外注費") {
+            row.push(13);
+        }
+        else {
+            row.push(escapeStr(""));
+        }
+        // 8 部門コード
+        row.push(escapeStr(""));
+        // 9 取引先コード
+        row.push(escapeStr(""));
+        // 10 取引先名
+        row.push(escapeStr(""));
+        // 11 税種別
+        if(isCost(record)) {
+            row.push(50);
+        } else {
+            row.push(60);
+        }
+        // 12 事業区分
+        row.push(1);
+        // 13 税率
+        row.push(8); // 税率8%
+        // 14 内外別記（内税表記は1）
+        if(isIncludeTax(record)) {
+            row.push(1);
+        }
+        else {
+            row.push(escapeStr(""));
+        }
+        // 15 金額
+        row.push(escapeStr(record['expense_amount'].value));
+        // 16 税額
+        row.push(escapeStr(""));
+        // 17 摘要
+        row.push(escapeStr(record['expense_content'].value));
+        //--------------------------貸方
+        // 18 貸方・科目（小口現金の場合は1118）
+        if (record['payer'].value == "小口現金"){ 
+          row.push(1118);
+        } else {
+          row.push(2114);
+        }
+        // 19 補助コード
+        row.push(getPayerCode(record));
+        // 20 部門コード
+        row.push(escapeStr(""));
+        // 21 取引先コード
+        row.push(escapeStr(""));
+        // 22 取引先名
+        row.push(escapeStr(""));
+        // 23 税種別
+        if(isCost(record)) {
+            row.push(50);
+        } else {
+            row.push(60); 
+        }
+        // 24 事業区分
+        row.push(1);
+        // 25 税率
+        row.push(8); // 税率8%
+        // 26 内外別記
+        row.push(1);
+        // 27 金額
+        row.push(escapeStr(record['expense_amount'].value));
+        // 28 税額
+        row.push(escapeStr(""));
+        // 29 摘要
+        row.push(escapeStr(record['expense_content'].value));
+
+        return row;
     }
 
     kintone.events.on('app.record.index.show', function(event) {
@@ -122,23 +234,13 @@
             }
 
             var csv = [];
-            var row = ['ID', '税理士チェック', '税金', '氏名', '費目', '内容', '金額', '領収書', '日付', '作成日時'];
-            csv.push(row);
+            csv.push(csvHeader);
             for (var i = 0; i < records.length; i++ ) {
                 var record = records[i];
-                row = [];
-                row.push(escapeStr(record['レコード番号'].value));
-                row.push(escapeStr(record['checked'].value));
-                row.push(escapeStr(record['tax_type'].value));
-                row.push(escapeStr(record['name'].value));
-                row.push(escapeStr(record['expense_type'].value));
-                row.push(escapeStr(record['expense_content'].value));
-                row.push(escapeStr(record['expense_amount'].value));
-                row.push(escapeStr(record['receipt_sheets'].value));
-                row.push(escapeStr(record['expense_date'].value));
-                row.push(escapeStr(record['作成日時'].value));
-
-                csv.push(row);
+                if(isDeposit(record)) {
+                    continue;
+                }
+                csv.push(createRowCsv(record));
                 updateCsvFlg(record['レコード番号'].value);
             }
 
