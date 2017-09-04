@@ -61,7 +61,11 @@
          ,'部門コード', '取引先コード', '取引先名', '税種別', '事業区分', '税率', '内外別記', '金額', '税額'
          ,'摘要', '貸方・科目', '補助コード', '部門コード', '取引先コード', '取引先名', '税種別', '事業区分'
          , '税率', '内外別記', '金額', '税額', '摘要'];
-    
+
+    var isArray = function(obj) {
+        return Object.prototype.toString.call(obj) === '[object Array]';
+    }
+
     var escapeStr = function(value) {
         if(isArray(value)) {
             value = value.join(',');
@@ -106,10 +110,6 @@
         var lastMonth = date.getMonth() - 1;
         var targetDate = new Date(record['expense_date'].value);
         return lastMonth == targetDate.getMonth();
-    }
-
-    var isArray = function(obj) {
-        return Object.prototype.toString.call(obj) === '[object Array]';
     }
 
     var getAccountCode = function(expenseType) {
