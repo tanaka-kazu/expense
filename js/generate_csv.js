@@ -89,7 +89,23 @@
     }
 
     var isIncludeTax = function(record) {
-        return record['tax_type'] == '仕課内（8%）';
+        return record['tax_type'].value == '仕課内（8%）';
+    }
+
+    var isChecked = function(record) {
+        return record['checked'].value.toString() == ["済"].toString();
+    }
+
+    var isOutputCsv = function(record) {
+        var val = record['output_csv_flg'].value.toString;
+        return record['output_csv_flg'].value.toString() == ["済"].toString();
+    }
+
+    var isLastMonthRecord = function(record) {
+        var date = new Date();
+        var lastMonth = date.getMonth() - 1;
+        var targetDate = new Date(record['expense_date'].value);
+        return lastMonth == targetDate.getMonth();
     }
 
     var isArray = function(obj) {
@@ -240,8 +256,22 @@
                 if(isDeposit(record)) {
                     continue;
                 }
+                if(!isChecked(record)) {
+                    continue;
+                }
+                if(isOutputCsv(record)) {
+                    continue;
+                }
+                if(!isLastMonthRecord(record)) {
+                    continue;
+                }
                 csv.push(createRowCsv(record));
                 updateCsvFlg(record['レコード番号'].value);
+            }
+
+            if(csv.length == 1) {
+                window.alert("対象データがありません");
+                return;
             }
 
             // 文字列を配列に
@@ -274,7 +304,7 @@
         
                 document.body.removeChild(link);
             }
-
+            location.reload();
         };
 
         kintone.app.getHeaderMenuSpaceElement().appendChild(dlCsvButton);
