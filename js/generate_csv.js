@@ -55,7 +55,7 @@
         "小口現金": "",
         "": ""
     }
-    var csvTarget = ['未対応の一覧', '出力用一覧（当月&出力済除外）'];
+    var csvTarget = ['出力用一覧（当月&出力済除外）'];
 
     var csvHeader = ['処理区分', 'データID', '伝票日付', '伝票番号', '入力日付', '借方・科目', '補助コード'
         , '部門コード', '取引先コード', '取引先名', '税種別', '事業区分', '税率', '内外別記', '金額', '税額'
@@ -103,6 +103,10 @@
     var isOutputCsv = function (record) {
         var val = record['output_csv_flg'].value.toString;
         return record['output_csv_flg'].value.toString() == ["済"].toString();
+    }
+
+    var isTargetRecord = function (record) {
+
     }
 
     var isLastMonthRecord = function (record) {
