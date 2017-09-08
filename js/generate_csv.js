@@ -113,7 +113,7 @@
     }
 
     var getAccountCode = function (expenseType) {
-        return escapeStr(accountCodes[expenseType]);
+        return escapeStr(expenseType.split(":")[1]);
     }
 
     var str2array = function (str) {
