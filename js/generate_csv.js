@@ -38,26 +38,26 @@
         "(10万以上) 工具・器具": "1216",
         "イベント費": "6115",
     };
-    var costs = {
+    var COSTS = {
         "外注費": "6212",
         "広告宣伝費": "6113",
         "ｺﾐｯｼｮﾝ料": "5214",
         "SaaS代": "6331",
         "仕入外注費": "6332"
     };
-    var deposits = {
+    var DEPOSITS = {
         "預り金": "2117",
         "仮払金": "1156"
     };
-    var payers = {
+    var PAYERS = {
         "倉貫": "1",
         "藤原": "2",
         "小口現金": "",
         "": ""
     }
-    var csvTarget = ['出力用一覧（当月&出力済除外）'];
+    var CSV_BTN_TARGET = ['出力用一覧（当月&出力済除外）'];
 
-    var csvHeader = ['処理区分', 'データID', '伝票日付', '伝票番号', '入力日付', '借方・科目', '補助コード'
+    var CSV_HEADERS = ['処理区分', 'データID', '伝票日付', '伝票番号', '入力日付', '借方・科目', '補助コード'
         , '部門コード', '取引先コード', '取引先名', '税種別', '事業区分', '税率', '内外別記', '金額', '税額'
         , '摘要', '貸方・科目', '補助コード', '部門コード', '取引先コード', '取引先名', '税種別', '事業区分'
         , '税率', '内外別記', '金額', '税額', '摘要'];
@@ -74,45 +74,40 @@
     }
 
     var getPayerCode = function (payer) {
-        return escapeStr(payers[payer]);
+        return escapeStr(PAYERS[payer]);
     }
 
     var isCsvDownloadEnabled = function (listName) {
-        return -1 < csvTarget.indexOf(listName);
+        return CSV_BTN_TARGET.indexOf(listName) > -1;
     }
 
     var isDeposit = function (record) {
         if (getPayerCode(record)) {
             return false;
         }
-        return record['expense_type'].value in deposits;
+        return record.expense_type.value in DEPOSITS;
     }
 
     var isCost = function (record) {
-        return record['expense_type'].value in costs;
+        return record.expense_type.value in COSTS;
     }
 
     var isIncludeTax = function (record) {
-        return record['tax_type'].value == '仕課内（8%）';
+        return record.tax_type.value === '仕課内（8%）';
     }
 
     var isChecked = function (record) {
-        return record['checked'].value.toString() == ["済"].toString();
+        return record.checked.value.toString() === ["済"].toString();
     }
 
     var isOutputCsv = function (record) {
-        var val = record['output_csv_flg'].value.toString;
-        return record['output_csv_flg'].value.toString() == ["済"].toString();
-    }
-
-    var isTargetRecord = function (record) {
-
+        return record.output_csv_flg.value.toString() === ["済"].toString();
     }
 
     var isLastMonthRecord = function (record) {
         var date = new Date();
         var lastMonth = date.getMonth() - 1;
-        var targetDate = new Date(record['expense_date'].value);
+        var targetDate = new Date(record.expense_date.value);
         return lastMonth == targetDate.getMonth();
     }
 
@@ -130,22 +125,20 @@
 
     var updateCsvFlg = function (idList) {
         var body = {};
-        body["app"] = kintone.app.getId();
+        body.app = kintone.app.getId();
         var records = [];
-        for (let id in idList) {
+        for (var id in idList) {
             var record = {};
-            record["id"] = idList[id];
-            record["record"] = { "output_csv_flg": { "value": ["済"] } };
+            record.id = idList[id];
+            record.record = { "output_csv_flg": { "value": ["済"] } };
             records.push(record);
         }
-        body["records"] = records;
-        console.log(body);
-        kintone.api(kintone.api.url('/k/v1/records', true), 'PUT', body, function (resp) {
-            // success
+        body.records = records;
+        kintone.api(kintone.api.url('/k/v1/records', true), 'PUT', body).then(function (resp) {
             console.log(resp);
         }, function (error) {
             // error
-            console.log(error);
+            console.error(error);
             throw new Error(error);
         });
     }
@@ -157,19 +150,18 @@
         // 2 データID
         row.push(escapeStr(""));
         // 3 伝票日付
-        row.push(escapeStr(record['expense_date'].value));
+        row.push(escapeStr(record.expense_date.value));
         // 4 伝票番号
         row.push(escapeStr(""));
         // 5 入力日付
         row.push(escapeStr(""));
         //--------------------------借方
         // 6 借方・科目
-        row.push(getAccountCode(record['expense_type'].value));
+        row.push(getAccountCode(record.expense_type.value));
         // 7 補助コード
-        if (record['expense_type'].value == "外注費") {
+        if (record.expense_type.value == "外注費") {
             row.push(13);
-        }
-        else {
+        } else {
             row.push(escapeStr(""));
         }
         // 8 部門コード
@@ -191,19 +183,18 @@
         // 14 内外別記（内税表記は1）
         if (isIncludeTax(record)) {
             row.push(1);
-        }
-        else {
+        } else {
             row.push(escapeStr(""));
         }
         // 15 金額
-        row.push(escapeStr(record['expense_amount'].value));
+        row.push(escapeStr(record.expense_amount.value));
         // 16 税額
         row.push(escapeStr(""));
         // 17 摘要
-        row.push(escapeStr(record['expense_content'].value));
+        row.push(escapeStr(record.expense_content.value));
         //--------------------------貸方
         // 18 貸方・科目（小口現金の場合は1118）
-        if (record['payer'].value == "小口現金") {
+        if (record.payer.value == "小口現金") {
             row.push(1118);
         } else {
             row.push(2114);
@@ -229,11 +220,11 @@
         // 26 内外別記
         row.push(1);
         // 27 金額
-        row.push(escapeStr(record['expense_amount'].value));
+        row.push(escapeStr(record.expense_amount.value));
         // 28 税額
         row.push(escapeStr(""));
         // 29 摘要
-        row.push(escapeStr(record['expense_content'].value));
+        row.push(escapeStr(record.expense_content.value));
 
         return row;
     }
@@ -266,26 +257,18 @@
 
             var csv = [];
             var idList = [];
-            csv.push(csvHeader);
+            csv.push(CSV_HEADERS);
             for (var i = 0; i < records.length; i++) {
                 var record = records[i];
-                if (isDeposit(record)) {
-                    continue;
-                }
-                if (!isChecked(record)) {
-                    continue;
-                }
-                if (isOutputCsv(record)) {
-                    continue;
-                }
-                if (!isLastMonthRecord(record)) {
+                if (isDeposit(record) || !isChecked(record)
+                    || isOutputCsv(record) || !isLastMonthRecord(record)) {
                     continue;
                 }
                 csv.push(createRowCsv(record));
                 idList.push(record['レコード番号'].value);
             }
 
-            if (csv.length == 1) {
+            if (csv.length === 1) {
                 window.alert("対象データがありません");
                 return;
             }
